@@ -11,17 +11,80 @@ import chess.svg
 
 from IPython.display import SVG
 
-import piecetables
 
-board = chess.Board()
-SVG(chess.svg.board(board=board,size=400))  
+## Piece-square tables
+        
+pawntable = [
+ 0,  0,  0,  0,  0,  0,  0,  0,
+ 5, 10, 10,-20,-20, 10, 10,  5,
+ 5, -5,-10,  0,  0,-10, -5,  5,
+ 0,  0,  0, 20, 20,  0,  0,  0,
+ 5,  5, 10, 25, 25, 10,  5,  5,
+10, 10, 20, 30, 30, 20, 10, 10,
+50, 50, 50, 50, 50, 50, 50, 50,
+ 0,  0,  0,  0,  0,  0,  0,  0]
 
-boardvalue = 0
+knightstable = [
+-50,-40,-30,-30,-30,-30,-40,-50,
+-40,-20,  0,  5,  5,  0,-20,-40,
+-30,  5, 10, 15, 15, 10,  5,-30,
+-30,  0, 15, 20, 20, 15,  0,-30,
+-30,  5, 15, 20, 20, 15,  5,-30,
+-30,  0, 10, 15, 15, 10,  0,-30,
+-40,-20,  0,  0,  0,  0,-20,-40,
+-50,-40,-30,-30,-30,-30,-40,-50]
+
+bishopstable = [
+-20,-10,-10,-10,-10,-10,-10,-20,
+-10,  5,  0,  0,  0,  0,  5,-10,
+-10, 10, 10, 10, 10, 10, 10,-10,
+-10,  0, 10, 10, 10, 10,  0,-10,
+-10,  5,  5, 10, 10,  5,  5,-10,
+-10,  0,  5, 10, 10,  5,  0,-10,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-20,-10,-10,-10,-10,-10,-10,-20]
+
+rookstable = [
+  0,  0,  0,  5,  5,  0,  0,  0,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+  5, 10, 10, 10, 10, 10, 10,  5,
+ 0,  0,  0,  0,  0,  0,  0,  0]
+
+queenstable = [
+-20,-10,-10, -5, -5,-10,-10,-20,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-10,  5,  5,  5,  5,  5,  0,-10,
+  0,  0,  5,  5,  5,  5,  0, -5,
+ -5,  0,  5,  5,  5,  5,  0, -5,
+-10,  0,  5,  5,  5,  5,  0,-10,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-20,-10,-10, -5, -5,-10,-10,-20]
+
+kingstable = [
+ 20, 30, 10,  0,  0, 10, 30, 20,
+ 20, 20,  0,  0,  0,  0, 20, 20,
+-10,-20,-20,-20,-20,-20,-20,-10,
+-20,-30,-30,-40,-40,-30,-30,-20,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30]
+
+piecetypes = [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING ]
+tables = [pawntable, knightstable, bishopstable, rookstable, queenstable, kingstable]
+piecevalues = [100,320,330,500,900]
+
+
+
 
 
 ## Board evaluation
 
-def init_evaluate_board():
+def init_evaluate_board(board):
     wp = len(board.pieces(chess.PAWN, chess.WHITE))
     bp = len(board.pieces(chess.PAWN, chess.BLACK))
     wn = len(board.pieces(chess.KNIGHT, chess.WHITE))
@@ -58,7 +121,7 @@ def init_evaluate_board():
     
     return boardvalue
 
-def evaluate_board():
+def evaluate_board(board):
     
     if board.is_checkmate():
         if board.turn:
@@ -70,14 +133,14 @@ def evaluate_board():
     if board.is_insufficient_material():
         return 0
     
-    eval = boardvalue
+    eval = init_evaluate_board(board)
     if board.turn:
         return eval
     else:
         return -eval
-    S
+    
 
-def update_eval(mov, side):
+def update_eval(board, mov, side):
     global boardvalue
     
     #update piecequares
@@ -86,20 +149,20 @@ def update_eval(mov, side):
         boardvalue = boardvalue - tables[movingpiece - 1][mov.from_square]
         #update castling
         if (mov.from_square == chess.E1) and (mov.to_square == chess.G1):
-            boardvalue = boardvalue - piecetables.rookstable[chess.H1]
-            boardvalue = boardvalue + piecetables.rookstable[chess.F1]
+            boardvalue = boardvalue - rookstable[chess.H1]
+            boardvalue = boardvalue + rookstable[chess.F1]
         elif (mov.from_square == chess.E1) and (mov.to_square == chess.C1):
-            boardvalue = boardvalue - piecetables.rookstable[chess.A1]
-            boardvalue = boardvalue + piecetables.rookstable[chess.D1]
+            boardvalue = boardvalue - rookstable[chess.A1]
+            boardvalue = boardvalue + rookstable[chess.D1]
     else:
         boardvalue = boardvalue + tables[movingpiece - 1][mov.from_square]
         #update castling
         if (mov.from_square == chess.E8) and (mov.to_square == chess.G8):
-            boardvalue = boardvalue + piecetables.rookstable[chess.H8]
-            boardvalue = boardvalue - piecetables.rookstable[chess.F8]
+            boardvalue = boardvalue + rookstable[chess.H8]
+            boardvalue = boardvalue - rookstable[chess.F8]
         elif (mov.from_square == chess.E8) and (mov.to_square == chess.C8):
-            boardvalue = boardvalue + piecetables.rookstable[chess.A8]
-            boardvalue = boardvalue - piecetables.rookstable[chess.D8]
+            boardvalue = boardvalue + rookstable[chess.A8]
+            boardvalue = boardvalue - rookstable[chess.D8]
         
     if side:
         boardvalue = boardvalue + tables[movingpiece - 1][mov.to_square]
@@ -128,16 +191,14 @@ def update_eval(mov, side):
             
     return mov
 
-def make_move(mov):
-    update_eval(mov, board.turn)
+def make_move(board, mov):
+    #update_eval(board, mov, board.turn)
     board.push(mov)
-    
     return mov
 
-def unmake_move():
+def unmake_move(board):
     mov = board.pop()
-    update_eval(mov, not board.turn)
-    
+    #update_eval(board, mov, not board.turn)
     return mov
     
 
@@ -145,14 +206,14 @@ def unmake_move():
 ## Search 
 
 ## https://www.youtube.com/watch?v=l-hh51ncgDI
-def alphabeta( alpha, beta, depthleft ):
+def alphabeta(board, alpha, beta, depthleft):
     bestscore = -9999
     if( depthleft == 0 ):
-        return quiesce( alpha, beta )
+        return quiesce(board, alpha, beta)
     for move in board.legal_moves:
-        make_move(move)   
-        score = -alphabeta( -beta, -alpha, depthleft - 1 )
-        unmake_move()
+        make_move(board, move)   
+        score = -alphabeta(board, -beta, -alpha, depthleft - 1)
+        unmake_move(board)
         if( score >= beta ):
             return score
         if( score > bestscore ):
@@ -161,8 +222,8 @@ def alphabeta( alpha, beta, depthleft ):
             alpha = score   
     return bestscore
 
-def quiesce( alpha, beta ):
-    stand_pat = evaluate_board()
+def quiesce(board, alpha, beta):
+    stand_pat = evaluate_board(board)
     if( stand_pat >= beta ):
         return beta
     if( alpha < stand_pat ):
@@ -170,9 +231,9 @@ def quiesce( alpha, beta ):
 
     for move in board.legal_moves:
         if board.is_capture(move):
-            make_move(move)        
-            score = -quiesce( -beta, -alpha )
-            unmake_move()
+            make_move(board, move)        
+            score = quiesce(board, -beta, -alpha)
+            unmake_move(board)
 
             if( score >= beta ):
                 return beta
@@ -182,94 +243,101 @@ def quiesce( alpha, beta ):
 
 import chess.polyglot
 
-def selectmove(depth):
+def selectmove(board, depth):
     try:
-        move = chess.polyglot.MemoryMappedReader("bookfish.bin").weighted_choice(board).move()
-        movehistory.append(move)
+        print("book move")
+        move = chess.polyglot.MemoryMappedReader("./book/bookfish.bin").weighted_choice(board).move
+        print("book move...........")
         return move
-    except:
+    except Exception as e:
+        print(e)
         bestMove = chess.Move.null()
         bestValue = -99999
         alpha = -100000
         beta = 100000
         for move in board.legal_moves:
-            make_move(move)
-            boardValue = -alphabeta(-beta, -alpha, depth-1)
+            make_move(board, move)
+            boardValue = -alphabeta(board, -beta, -alpha, depth-1)
             if boardValue > bestValue:
                 bestValue = boardValue;
                 bestMove = move
             if( boardValue > alpha ):
                 alpha = boardValue
-            unmake_move()
-        movehistory.append(bestMove)
+            unmake_move(board)
         return bestMove
     
     
 ## Game again stockfish
-import chess.pgn
-import datetime
-import chess.engine
+#import chess.pgn
+#import datetime
+#import chess.engine
 
-engine = chess.engine.SimpleEngine.popen_uci("C:/Users/Louis/Documents/Others/lichess-bot/lichess-bot-master/engines/stockfish.exe")
+#engine = chess.engine.SimpleEngine.popen_uci("C:/Users/Louis/Documents/Others/lichess-bot/lichess-bot-master/engines/stockfish.exe")
 #engine.uci()
 #engine.name
 
-movehistory =[]
-game = chess.pgn.Game()
-game.headers["Event"] = "Example"
-game.headers["Site"] = "Linz"
-game.headers["Date"] = str(datetime.datetime.now().date())
-game.headers["Round"] = 1
-game.headers["White"] = "MyChess"
-game.headers["Black"] = "Stockfish9"
-board = chess.Board()
-while not board.is_game_over():
-    if board.turn:
-        move = selectmove(4)
-        board.push(move)
-        print(move)
-    else:
-        result = engine.play(board, chess.engine.Limit(time=0.1))
-        movehistory.append(result.move)
-        board.push(result.move)
-        print(result.move)
+# movehistory =[]
+# game = chess.pgn.Game()
+# game.headers["Event"] = "Example"
+# game.headers["Site"] = "Linz"
+# game.headers["Date"] = str(datetime.datetime.now().date())
+# game.headers["Round"] = 1
+# game.headers["White"] = "MyChess"
+# game.headers["Black"] = "Stockfish9"
+# board = chess.Board()
+# while not board.is_game_over():
+#     if board.turn:
+#         move = selectmove(4)
+#         board.push(move)
+#         print(move)
+#     else:
+#         result = engine.play(board, chess.engine.Limit(time=0.1))
+#         movehistory.append(result.move)
+#         board.push(result.move)
+#         print(result.move)
 
-engine.quit()
+# engine.quit()
     
-game.add_line(movehistory)
-game.headers["Result"] = str(board.result(claim_draw=True))
-print(game)
-print(game, file=open("test.pgn", "w"), end="\n\n")
+# game.add_line(movehistory)
+# game.headers["Result"] = str(board.result(claim_draw=True))
+# print(game)
+# print(game, file=open("test.pgn", "w"), end="\n\n")
 
-SVG(chess.svg.board(board=board,size=400))
+# SVG(chess.svg.board(board=board,size=400))
 
 
 ## Self Play
 import chess.pgn
 import datetime
 
-movehistory =[]
-game = chess.pgn.Game()
-game.headers["Event"] = "Example"
-game.headers["Site"] = "Linz"
-game.headers["Date"] = str(datetime.datetime.now().date())
-game.headers["Round"] = 1
-game.headers["White"] = "MyChess"
-game.headers["Black"] = "MyChess"
-board = chess.Board()
-while not board.is_game_over(claim_draw=True):
-    if board.turn:
-        move = selectmove(3)
-        board.push(move)       
-    else:
-        move = selectmove(3)
-        board.push(move)   
+
+        
+        
+if __name__ == "__main__":
+    game = chess.pgn.Game()
+    game.headers["Event"] = "Example"
+    game.headers["Site"] = "Linz"
+    game.headers["Date"] = str(datetime.datetime.now().date())
+    game.headers["Round"] = 1
+    game.headers["White"] = "Depth 2"
+    game.headers["Black"] = "Depth 3"
+    board = chess.Board()
     
-game.add_line(movehistory)
-game.headers["Result"] = str(board.result(claim_draw=True))
-print(game)
-print(game, file=open("selftest.pgn", "w"), end="\n\n")
-
-SVG(chess.svg.board(board=board,size=400))
-
-
+    #boardvalue = 0
+    
+    coup = 0
+    
+    while not board.is_game_over(claim_draw=True):
+        if board.turn:
+            move = selectmove(board, 2)
+            board.push(move) 
+            print("{}. {}".format(coup,move))
+            coup+=1
+        else:
+            move = selectmove(board, 4)
+            board.push(move)
+            print("{}... {}".format(coup,move))
+            
+    game.headers["Result"] = str(board.result(claim_draw=True))
+    print(game)
+    
