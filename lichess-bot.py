@@ -19,7 +19,7 @@ from requests.exceptions import ChunkedEncodingError, ConnectionError, HTTPError
 from urllib3.exceptions import ProtocolError
 from ColorLogger import enable_color_logging
 
-
+import negamaxAlphaBeta
 from IamTheChessBot import selectmove
 
 logger = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ def start(li, user_profile, config):
                 
                 
                 try:
-                    print(res.get(timeout=120000))
+                    print(res.get(timeout=1200))
                     pass
                 except TimeoutError as exception:
                     print("We lacked patience and got a multiprocessing.TimeoutError")
@@ -146,7 +146,8 @@ def start(li, user_profile, config):
 ponder_results = {}
 
 
-#@backoff.on_exception(backoff.expo, BaseException, max_time=600, giveup=is_final)
+
+@backoff.on_exception(backoff.expo, BaseException, max_time=600, giveup=is_final)
 def play_game(li, game_id, control_queue, user_profile, config, challenge_queue):
     response = li.get_game_stream(game_id)
     lines = response.iter_lines()
@@ -155,6 +156,8 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
     initial_state = json.loads(next(lines).decode('utf-8'))
     game = model.Game(initial_state, user_profile["username"], li.baseUrl, config.get("abort_time", 20))
     board = setup_board(game)
+    
+    player = Player("Toto", 3)
     
     #engine = engine_factory(board)
     #engine.get_opponent_info(game)
@@ -177,8 +180,8 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
     if len(board.move_stack) < 2:
         while not terminated:
             try:
-                if not polyglot_cfg.get("enabled") or not play_first_book_move(game, board, li, book_cfg):
-                    if not play_first_move(game, board, li):
+                if not polyglot_cfg.get("enabled") or not play_first_book_move(game, board, li, book_cfg, player):
+                    if not play_first_move(game, board, li, player):
                         deferredFirstMove = True
                 break
             except HTTPError as exception:
@@ -199,7 +202,7 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
                 else:
                     btime = max(0, btime - move_overhead - int((time.perf_counter_ns() - start_time) / 1000000))
                 logger.info("Searching for wtime {} btime {}".format(wtime, btime))
-                best_move = selectmove(board, depth) #, ponder_move = engine.search_with_ponder(board, wtime, btime, game.state["winc"], game.state["binc"])
+                best_move = player.findBestMove(board) # selectmove(board, depth) #, ponder_move = engine.search_with_ponder(board, wtime, btime, game.state["winc"], game.state["binc"])
                 #engine.print_stats()
 
             li.make_move(game.id, best_move)
@@ -235,15 +238,15 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
                                 else:
                                     btime = max(0, btime - move_overhead - int((time.perf_counter_ns() - start_time) / 1000000))
                                 logger.info("Searching for wtime {} btime {}".format(wtime, btime))
-                                best_move = selectmove(board, depth) # best_move, ponder_move = engine.search_with_ponder(board, wtime, btime, upd["winc"], upd["binc"])
+                                best_move = player.findBestMove(board) # selectmove(board, depth) # best_move, ponder_move = engine.search_with_ponder(board, wtime, btime, upd["winc"], upd["binc"])
                                 #engine.print_stats()
                             else:
                                 best_move = book_move
 
                         li.make_move(game.id, best_move)
                     else:
-                        if not polyglot_cfg.get("enabled") or not play_first_book_move(game, board, li, book_cfg):
-                            play_first_move(game, board, li)
+                        if not polyglot_cfg.get("enabled") or not play_first_book_move(game, board, li, book_cfg, player):
+                            play_first_move(game, board, li, player)
                         deferredFirstMove = False
                 if board.turn == chess.WHITE:
                     game.ping(config.get("abort_time", 20), (upd["wtime"] + upd["winc"]) / 1000 + 60)
@@ -274,11 +277,11 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
     control_queue.put_nowait({"type": "local_game_done"})
 
 
-def play_first_move(game, board, li):
+def play_first_move(game, board, li, player):
     moves = game.state["moves"].split()
     if is_engine_move(game, moves):
         # need to hardcode first movetime since Lichess has 30 sec limit.
-        best_move = selectmove(board, 1)                                                             #engine.first_search(board, 10000)
+        best_move = player.findBestMove(board) # selectmove(board, 1)                                                             #engine.first_search(board, 10000)
         
         #engine.print_stats()
         li.make_move(game.id, best_move)
@@ -286,7 +289,7 @@ def play_first_move(game, board, li):
     return False
 
 
-def play_first_book_move(game, engine, board, li, config):
+def play_first_book_move(game, engine, board, li, config, player):
     moves = game.state["moves"].split()
     if is_engine_move(game, moves):
         book_move = get_book_move(board, config)
@@ -294,7 +297,7 @@ def play_first_book_move(game, engine, board, li, config):
             li.make_move(game.id, book_move)
             return True
         else:
-            return play_first_move(game, board, li)
+            return play_first_move(game, board, li, player)
     return False
 
 

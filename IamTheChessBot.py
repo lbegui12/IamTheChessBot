@@ -245,9 +245,7 @@ import chess.polyglot
 
 def selectmove(board, depth):
     try:
-        print("book move")
         move = chess.polyglot.MemoryMappedReader("./book/bookfish.bin").weighted_choice(board).move
-        print("book move...........")
         return move
     except Exception as e:
         print(e)
@@ -267,43 +265,7 @@ def selectmove(board, depth):
         return bestMove
     
     
-## Game again stockfish
-#import chess.pgn
-#import datetime
-#import chess.engine
 
-#engine = chess.engine.SimpleEngine.popen_uci("C:/Users/Louis/Documents/Others/lichess-bot/lichess-bot-master/engines/stockfish.exe")
-#engine.uci()
-#engine.name
-
-# movehistory =[]
-# game = chess.pgn.Game()
-# game.headers["Event"] = "Example"
-# game.headers["Site"] = "Linz"
-# game.headers["Date"] = str(datetime.datetime.now().date())
-# game.headers["Round"] = 1
-# game.headers["White"] = "MyChess"
-# game.headers["Black"] = "Stockfish9"
-# board = chess.Board()
-# while not board.is_game_over():
-#     if board.turn:
-#         move = selectmove(4)
-#         board.push(move)
-#         print(move)
-#     else:
-#         result = engine.play(board, chess.engine.Limit(time=0.1))
-#         movehistory.append(result.move)
-#         board.push(result.move)
-#         print(result.move)
-
-# engine.quit()
-    
-# game.add_line(movehistory)
-# game.headers["Result"] = str(board.result(claim_draw=True))
-# print(game)
-# print(game, file=open("test.pgn", "w"), end="\n\n")
-
-# SVG(chess.svg.board(board=board,size=400))
 
 
 ## Self Play
@@ -332,12 +294,50 @@ if __name__ == "__main__":
             move = selectmove(board, 2)
             board.push(move) 
             print("{}. {}".format(coup,move))
-            coup+=1
+            
         else:
-            move = selectmove(board, 4)
+            move = selectmove(board, 1)
             board.push(move)
             print("{}... {}".format(coup,move))
+            coup+=1
             
     game.headers["Result"] = str(board.result(claim_draw=True))
     print(game)
+    print(game, file=open("test.pgn", "w"), end="\n\n")
+
+    # SVG(chess.svg.board(board=board,size=400))
     
+    
+    
+    #engine = chess.engine.SimpleEngine.popen_uci("C:/Users/Louis/Documents/Others/lichess-bot/lichess-bot-master/engines/stockfish.exe")
+    #engine.uci()
+    #engine.name
+    
+    # movehistory =[]
+    # game = chess.pgn.Game()
+    # game.headers["Event"] = "Example"
+    # game.headers["Site"] = "Linz"
+    # game.headers["Date"] = str(datetime.datetime.now().date())
+    # game.headers["Round"] = 1
+    # game.headers["White"] = "MyChess"
+    # game.headers["Black"] = "Stockfish9"
+    # board = chess.Board()
+    # while not board.is_game_over():
+    #     if board.turn:
+    #         move = selectmove(4)
+    #         board.push(move)
+    #         print(move)
+    #     else:
+    #         result = engine.play(board, chess.engine.Limit(time=0.1))
+    #         movehistory.append(result.move)
+    #         board.push(result.move)
+    #         print(result.move)
+    
+    # engine.quit()
+        
+    # game.add_line(movehistory)
+    # game.headers["Result"] = str(board.result(claim_draw=True))
+    # print(game)
+    # print(game, file=open("test.pgn", "w"), end="\n\n")
+    
+    # SVG(chess.svg.board(board=board,size=400))
