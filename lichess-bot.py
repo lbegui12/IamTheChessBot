@@ -11,16 +11,13 @@ import logging_pool
 import signal
 import time
 import backoff
-import threading
 from config import load_config
 from conversation import Conversation, ChatLine
-from functools import partial
 from requests.exceptions import ChunkedEncodingError, ConnectionError, HTTPError, ReadTimeout
 from urllib3.exceptions import ProtocolError
 from ColorLogger import enable_color_logging
 
-import negamaxAlphaBeta
-from IamTheChessBot import selectmove
+from negamaxAlphaBeta import Player
 
 logger = logging.getLogger(__name__)
 
@@ -114,18 +111,14 @@ def start(li, user_profile, config):
                 logger.info("--- Process Used. Total Queued: {}. Total Used: {}".format(queued_processes, busy_processes))
                 game_id = event["game"]["id"]  
                 
-                print("before play")
                 res = pool.apply_async(play_game, [li, game_id, control_queue, user_profile, config, challenge_queue])
-                
-                
                 try:
-                    print(res.get(timeout=1200))
+                    #print(res.get(timeout=1200))
                     pass
                 except TimeoutError as exception:
                     print("We lacked patience and got a multiprocessing.TimeoutError")
                 
                 
-                print("after play")
             while ((queued_processes + busy_processes) < max_games and challenge_queue):  # keep processing the queue until empty or max_games is reached
                 chlng = challenge_queue.pop(0)
                 try:
@@ -170,7 +163,6 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
     polyglot_cfg = engine_cfg.get("polyglot", {})
     book_cfg = polyglot_cfg.get("book", {})
 
-    depth = engine_cfg.get("depth", 4)
     deferredFirstMove = False
 
     
@@ -202,8 +194,7 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
                 else:
                     btime = max(0, btime - move_overhead - int((time.perf_counter_ns() - start_time) / 1000000))
                 logger.info("Searching for wtime {} btime {}".format(wtime, btime))
-                best_move = player.findBestMove(board) # selectmove(board, depth) #, ponder_move = engine.search_with_ponder(board, wtime, btime, game.state["winc"], game.state["binc"])
-                #engine.print_stats()
+                best_move = player.findBestMove(board) 
 
             li.make_move(game.id, best_move)
 
@@ -269,8 +260,6 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
                 break
 
     logger.info("--- {} Game over".format(game.url()))
-    #engine.engine.stop()
-    #engine.quit()
 
     # This can raise queue.NoFull, but that should only happen if we're not processing
     # events fast enough and in this case I believe the exception should be raised
@@ -283,7 +272,6 @@ def play_first_move(game, board, li, player):
         # need to hardcode first movetime since Lichess has 30 sec limit.
         best_move = player.findBestMove(board) # selectmove(board, 1)                                                             #engine.first_search(board, 10000)
         
-        #engine.print_stats()
         li.make_move(game.id, best_move)
         return True
     return False

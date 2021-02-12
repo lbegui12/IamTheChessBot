@@ -65,38 +65,37 @@ class Player:
         self.name = name
         self.next_move = None
         self.depth = depth
-        self.pst = [pawntable, knightstable, bishopstable, rookstable, queenstable, kingstable]
+        self.piece_square_tables = [pawntable, knightstable, bishopstable, rookstable, queenstable, kingstable]
         self.pieces_values = [100,320,330,500,900]
         
     
     def findBestMove(self, board):
-        global nextMove
-        nextMove = chess.Move.null()
+        self.next_move = chess.Move.null()
         validMoves = list(board.legal_moves)
-        #print(validMoves)
         random.shuffle(validMoves)
-        #print(validMoves)
         self.findMoveNegaMaxAlphaBeta(board, validMoves, self.depth, -CHECKMATE, CHECKMATE, 1 if board.turn == chess.WHITE else -1) 
-        return nextMove
+        return self.next_move
     
     
+    def findMoveNegaMax(self, board, validMoves, depth, turnMultiplier):
+        return None
+        
     
     
     def findMoveNegaMaxAlphaBeta(self, board, validMoves, depth, alpha, beta, turnMultiplier):
-        global nextMove
         if depth==0:
             return turnMultiplier * self.scoreBoard(board)
         
-        # move_ordering - implement later 
+        # move_ordering - to implement later (check better moves first ! )
         maxScore = -CHECKMATE
         for move in validMoves:
             board.push(move)
             nextMoves = board.legal_moves
-            score = -self.findMoveNegaMaxAlphaBeta(board, nextMoves, depth-1, -beta, -alpha, -1*turnMultiplier)
+            score = -self.findMoveNegaMaxAlphaBeta(board, nextMoves, depth-1, -beta, -alpha, -turnMultiplier)
             if score>maxScore:
                 maxScore=score
                 if depth==self.depth:
-                    nextMove=move
+                    self.next_move = move
             board.pop()
             if maxScore>alpha:
                 alpha=maxScore
@@ -112,9 +111,7 @@ class Player:
     def scoreBoard(self, board):
         
         if board.is_checkmate():
-            #print("CHEKCMATE")
-            if board.turn == chess.WHITE:
-                
+            if board.turn == chess.WHITE:    
                 return -CHECKMATE       # black wins
             else:
                 return CHECKMATE        # white wins
@@ -134,25 +131,30 @@ class Player:
         wq = len(board.pieces(chess.QUEEN, chess.WHITE))
         bq = len(board.pieces(chess.QUEEN, chess.BLACK))
         
-        material = 100*(wp-bp)+320*(wn-bn)+330*(wb-bb)+500*(wr-br)+900*(wq-bq)
+        material = (self.pieces_values[0]*(wp-bp)
+                   + self.pieces_values[1]*(wn-bn)
+                   + self.pieces_values[2]*(wb-bb)
+                   + self.pieces_values[3]*(wr-br)
+                   + self.pieces_values[4]*(wq-bq))
         
-        pawnsq = sum([pawntable[i] for i in board.pieces(chess.PAWN, chess.WHITE)])
-        pawnsq= pawnsq + sum([-pawntable[chess.square_mirror(i)] 
+        pst = self.piece_square_tables
+        pawnsq = sum([pst[0][i] for i in board.pieces(chess.PAWN, chess.WHITE)])
+        pawnsq= pawnsq + sum([-pst[0][chess.square_mirror(i)] 
                                         for i in board.pieces(chess.PAWN, chess.BLACK)])
-        knightsq = sum([knightstable[i] for i in board.pieces(chess.KNIGHT, chess.WHITE)])
-        knightsq = knightsq + sum([-knightstable[chess.square_mirror(i)] 
+        knightsq = sum([pst[1][i] for i in board.pieces(chess.KNIGHT, chess.WHITE)])
+        knightsq = knightsq + sum([-pst[1][chess.square_mirror(i)] 
                                         for i in board.pieces(chess.KNIGHT, chess.BLACK)])
-        bishopsq= sum([bishopstable[i] for i in board.pieces(chess.BISHOP, chess.WHITE)])
-        bishopsq= bishopsq + sum([-bishopstable[chess.square_mirror(i)] 
+        bishopsq= sum([pst[2][i] for i in board.pieces(chess.BISHOP, chess.WHITE)])
+        bishopsq= bishopsq + sum([-pst[2][chess.square_mirror(i)] 
                                         for i in board.pieces(chess.BISHOP, chess.BLACK)])
-        rooksq = sum([rookstable[i] for i in board.pieces(chess.ROOK, chess.WHITE)]) 
-        rooksq = rooksq + sum([-rookstable[chess.square_mirror(i)] 
+        rooksq = sum([pst[3][i] for i in board.pieces(chess.ROOK, chess.WHITE)]) 
+        rooksq = rooksq + sum([-pst[3][chess.square_mirror(i)] 
                                         for i in board.pieces(chess.ROOK, chess.BLACK)])
-        queensq = sum([queenstable[i] for i in board.pieces(chess.QUEEN, chess.WHITE)]) 
-        queensq = queensq + sum([-queenstable[chess.square_mirror(i)] 
+        queensq = sum([pst[4][i] for i in board.pieces(chess.QUEEN, chess.WHITE)]) 
+        queensq = queensq + sum([-pst[4][chess.square_mirror(i)] 
                                         for i in board.pieces(chess.QUEEN, chess.BLACK)])
-        kingsq = sum([kingstable[i] for i in board.pieces(chess.KING, chess.WHITE)]) 
-        kingsq = kingsq + sum([-kingstable[chess.square_mirror(i)] 
+        kingsq = sum([pst[5][i] for i in board.pieces(chess.KING, chess.WHITE)]) 
+        kingsq = kingsq + sum([-pst[5][chess.square_mirror(i)] 
                                         for i in board.pieces(chess.KING, chess.BLACK)])
         
         score = material + pawnsq + knightsq + bishopsq + rooksq + queensq + kingsq
@@ -175,7 +177,7 @@ SLATEMATE = 0
 
 if __name__ == "__main__":
     
-    player1 = Player("NumeroUno", 4)
+    player1 = Player("NumeroUno", 3)
     player2 = Player("Toto", 1)
     
     game = chess.pgn.Game()
