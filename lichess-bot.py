@@ -144,7 +144,7 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
     initial_state = json.loads(next(lines).decode('utf-8'))
     game = model.Game(initial_state, user_profile["username"], li.baseUrl, config.get("abort_time", 20))
     board = setup_board(game)
-    player = Player("Toto", 3)
+    player = Player("Totonator", 4)
     
     conversation = Conversation(game, li, __version__, challenge_queue)
 
@@ -156,23 +156,24 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
 
     deferredFirstMove = False
 
+    # firt move as white
     if len(board.move_stack) < 2:
         while not terminated:
             try:
-                if not polyglot_cfg.get("enabled") or not play_first_book_move(game, board, li, book_cfg, player):
-                    if not play_first_move(game, board, li, player):
-                        deferredFirstMove = True
+                if not play_first_move(game, board, li, player):
+                    deferredFirstMove = True
                 break
             except HTTPError as exception:
                 if exception.response.status_code == 400:  # fallthrough
                     break
+    # first move as black ?
     else:
         moves = game.state["moves"].split()
         if not is_game_over(game) and is_engine_move(game, moves):
-            best_move = None
             best_move = player.findBestMove(board) 
 
             li.make_move(game.id, best_move)
+
 
     while not terminated:
         try:
@@ -184,25 +185,25 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
             u_type = upd["type"] if upd else "ping"
             if u_type == "chatLine":
                 conversation.react(ChatLine(upd), game)
+            
+            ####################### GAME ON ###################################################################################
             elif u_type == "gameState":
                 game.state = upd
                 moves = upd["moves"].split()
                 board = update_board(board, moves[-1])
-                if not is_game_over(game) and is_engine_move(game, moves):
-                    best_move = None                   
+                if not is_game_over(game) and is_engine_move(game, moves):                  
                     if not deferredFirstMove:
-                        if best_move is None:
-                            best_move = player.findBestMove(board) 
-                            
+                        best_move = player.findBestMove(board)   
                         li.make_move(game.id, best_move)
                     else:
-                        if not polyglot_cfg.get("enabled") or not play_first_book_move(game, board, li, book_cfg, player):
-                            play_first_move(game, board, li, player)
+                        play_first_move(game, board, li, player)
                         deferredFirstMove = False
                 if board.turn == chess.WHITE:
                     game.ping(config.get("abort_time", 20), (upd["wtime"] + upd["winc"]) / 1000 + 60)
                 else:
                     game.ping(config.get("abort_time", 20), (upd["btime"] + upd["binc"]) / 1000 + 60)
+            ##################################################################################################################
+            
             elif u_type == "ping":
                 if game.should_abort_now():
                     logger.info("    Aborting {} by lack of activity".format(game.url()))
@@ -236,7 +237,7 @@ def play_first_move(game, board, li, player):
         return True
     return False
 
-
+# play_first_book_move (False si c'est pas a toi de jouer, else (if get_book_move=> TRUE else play_first_move )
 def play_first_book_move(game, engine, board, li, config, player):
     moves = game.state["moves"].split()
     if is_engine_move(game, moves):
