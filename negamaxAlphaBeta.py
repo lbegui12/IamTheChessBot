@@ -61,18 +61,19 @@ kingstable = [
 
 
 class Player:
-    def __init__(self, name, depth):
+    def __init__(self, name, depth, book_path = "./book/bookfish.bin"):
         self.name = name
         self.next_move = None
         self.depth = depth
         self.piece_square_tables = [pawntable, knightstable, bishopstable, rookstable, queenstable, kingstable]
         self.pieces_values = [100,320,330,500,900]
+        self.book_path = book_path
         
     
     def findBestMove(self, board):
         self.next_move = chess.Move.null()
         try:
-            self.next_move = chess.polyglot.MemoryMappedReader("./book/bookfish.bin").weighted_choice(board).move
+            self.next_move = chess.polyglot.MemoryMappedReader(self.book_path).weighted_choice(board).move
         except:            
             validMoves = list(board.legal_moves)
             random.shuffle(validMoves)
@@ -81,7 +82,20 @@ class Player:
     
     
     def findMoveNegaMax(self, board, validMoves, depth, turnMultiplier):
-        return None
+        if depth==0:
+            return turnMultiplier * self.scoreBoard(board)
+        
+        maxScore = -CHECKMATE
+        for move in validMoves:
+            board.push(move)
+            nextMoves = board.legal_moves
+            score = -self.findMoveNegaMax(board, nextMoves, depth-1, -turnMultiplier)
+            if score>maxScore:
+                maxScore=score
+                if depth==self.depth:
+                    self.next_move = move
+            board.pop()
+        return maxScore
         
     
     

@@ -68,6 +68,7 @@ def watch_control_stream(control_queue, li):
 
 
 def start(li, user_profile, config):
+    print("Let's aaaa go !!!")
     challenge_config = config["challenge"]
     max_games = challenge_config.get("concurrency", 1)
     logger.info("You're now connected to {} and awaiting challenges.".format(config["url"]))
@@ -88,6 +89,7 @@ def start(li, user_profile, config):
                 busy_processes -= 1
                 logger.info("+++ Process Free. Total Queued: {}. Total Used: {}".format(queued_processes, busy_processes))
             elif event["type"] == "challenge":
+                logger.debug("New challenger")
                 chlng = model.Challenge(event["challenge"])
                 if chlng.is_supported(challenge_config):
                     challenge_queue.append(chlng)
@@ -102,6 +104,7 @@ def start(li, user_profile, config):
                     except Exception:
                         pass
             elif event["type"] == "gameStart":
+                
                 if queued_processes <= 0:
                     logger.debug("Something went wrong. Game is starting and we don't have a queued process")
                 else:
@@ -109,6 +112,8 @@ def start(li, user_profile, config):
                 busy_processes += 1
                 logger.info("--- Process Used. Total Queued: {}. Total Used: {}".format(queued_processes, busy_processes))
                 game_id = event["game"]["id"]  
+                
+                print("New game starts ! {}".format(game_id))
                 
                 res = pool.apply_async(play_game, [li, game_id, control_queue, user_profile, config, challenge_queue])
                 try:
@@ -144,11 +149,11 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
     initial_state = json.loads(next(lines).decode('utf-8'))
     game = model.Game(initial_state, user_profile["username"], li.baseUrl, config.get("abort_time", 20))
     board = setup_board(game)
-    player = Player("Totonator", 4)
+    player = Player("Totonator", 2)
     
     conversation = Conversation(game, li, __version__, challenge_queue)
 
-    logger.info("+++ {}".format(game))
+    logger.debug("+++ {}".format(game))
 
     deferredFirstMove = False
 
@@ -216,7 +221,7 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
             else:
                 break
 
-    logger.info("--- {} Game over".format(game.url()))
+    logger.debug("--- {} Game over".format(game.url()))
 
     # This can raise queue.NoFull, but that should only happen if we're not processing
     # events fast enough and in this case I believe the exception should be raised
@@ -232,49 +237,6 @@ def play_first_move(game, board, li, player):
         li.make_move(game.id, best_move)
         return True
     return False
-
-# play_first_book_move (False si c'est pas a toi de jouer, else (if get_book_move=> TRUE else play_first_move )
-def play_first_book_move(game, engine, board, li, config, player):
-    moves = game.state["moves"].split()
-    if is_engine_move(game, moves):
-        book_move = get_book_move(board, config)
-        if book_move:
-            li.make_move(game.id, book_move)
-            return True
-        else:
-            return play_first_move(game, board, li, player)
-    return False
-
-
-def get_book_move(board, config):
-    if board.uci_variant == "chess":
-        books = config["standard"]
-    else:
-        if config.get("{}".format(board.uci_variant)):
-            books = config["{}".format(board.uci_variant)]
-        else:
-            return None
-
-    for book in books:
-        with chess.polyglot.open_reader(book) as reader:
-            try:
-                selection = config.get("selection", "weighted_random")
-                if selection == "weighted_random":
-                    move = reader.weighted_choice(board).move()
-                elif selection == "uniform_random":
-                    move = reader.choice(board, minimum_weight=config.get("min_weight", 1)).move()
-                elif selection == "best_move":
-                    move = reader.find(board, minimum_weight=config.get("min_weight", 1)).move()
-            except IndexError:
-                # python-chess raises "IndexError" if no entries found
-                move = None
-
-        if move is not None:
-            logger.info("Got move {} from book {}".format(move, book))
-            return move
-        
-    return None
-
 
 def setup_board(game):
     print("set_up board")
@@ -331,9 +293,9 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--logfile', help="Log file to append logs to.", default=None)
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.DEBUG if args.v else logging.INFO, filename=args.logfile,
+    logging.basicConfig(level=logging.DEBUG if args.v else logging.DEBUG, filename="logfile.txt",
                         format="%(asctime)-15s: %(message)s")
-    enable_color_logging(debug_lvl=logging.DEBUG if args.v else logging.INFO)
+    enable_color_logging(debug_lvl=logging.DEBUG if args.v else logging.DEBUG)
     logger.info(intro())
     CONFIG = load_config(args.config or "./config.yml")
     li = lichess.Lichess(CONFIG["token"], CONFIG["url"], __version__)
