@@ -9,7 +9,6 @@ import logging
 import multiprocessing
 import logging_pool
 import signal
-import time
 import backoff
 from config import load_config
 from conversation import Conversation, ChatLine
@@ -136,10 +135,6 @@ def start(li, user_profile, config):
     control_stream.join()
 
 
-ponder_results = {}
-
-
-
 @backoff.on_exception(backoff.expo, BaseException, max_time=600, giveup=is_final)
 def play_game(li, game_id, control_queue, user_profile, config, challenge_queue):
     response = li.get_game_stream(game_id)
@@ -149,25 +144,17 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
     initial_state = json.loads(next(lines).decode('utf-8'))
     game = model.Game(initial_state, user_profile["username"], li.baseUrl, config.get("abort_time", 20))
     board = setup_board(game)
-    
     player = Player("Toto", 3)
     
-    #engine = engine_factory(board)
-    #engine.get_opponent_info(game)
     conversation = Conversation(game, li, __version__, challenge_queue)
 
     logger.info("+++ {}".format(game))
 
     engine_cfg = config["engine"]
-    move_overhead = config.get("move_overhead", 1000)
     polyglot_cfg = engine_cfg.get("polyglot", {})
     book_cfg = polyglot_cfg.get("book", {})
 
     deferredFirstMove = False
-
-    
-    
-    #engine.set_time_control(game)
 
     if len(board.move_stack) < 2:
         while not terminated:
@@ -182,19 +169,8 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
     else:
         moves = game.state["moves"].split()
         if not is_game_over(game) and is_engine_move(game, moves):
-            book_move = None
             best_move = None
-            wtime = game.state["wtime"]
-            btime = game.state["btime"]
-            start_time = time.perf_counter_ns()
-
-            if book_move is None:
-                if board.turn == chess.WHITE:
-                    wtime = max(0, wtime - move_overhead - int((time.perf_counter_ns() - start_time) / 1000000))
-                else:
-                    btime = max(0, btime - move_overhead - int((time.perf_counter_ns() - start_time) / 1000000))
-                logger.info("Searching for wtime {} btime {}".format(wtime, btime))
-                best_move = player.findBestMove(board) 
+            best_move = player.findBestMove(board) 
 
             li.make_move(game.id, best_move)
 
@@ -214,26 +190,10 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
                 board = update_board(board, moves[-1])
                 if not is_game_over(game) and is_engine_move(game, moves):
                     best_move = None                   
-
-                    wtime = upd["wtime"]
-                    btime = upd["btime"]
-                    start_time = time.perf_counter_ns()
-
                     if not deferredFirstMove:
-
                         if best_move is None:
-                            book_move = None
-                            if book_move is None:
-                                if board.turn == chess.WHITE:
-                                    wtime = max(0, wtime - move_overhead - int((time.perf_counter_ns() - start_time) / 1000000))
-                                else:
-                                    btime = max(0, btime - move_overhead - int((time.perf_counter_ns() - start_time) / 1000000))
-                                logger.info("Searching for wtime {} btime {}".format(wtime, btime))
-                                best_move = player.findBestMove(board) # selectmove(board, depth) # best_move, ponder_move = engine.search_with_ponder(board, wtime, btime, upd["winc"], upd["binc"])
-                                #engine.print_stats()
-                            else:
-                                best_move = book_move
-
+                            best_move = player.findBestMove(board) 
+                            
                         li.make_move(game.id, best_move)
                     else:
                         if not polyglot_cfg.get("enabled") or not play_first_book_move(game, board, li, book_cfg, player):
