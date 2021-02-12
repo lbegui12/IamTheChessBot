@@ -150,10 +150,6 @@ def play_game(li, game_id, control_queue, user_profile, config, challenge_queue)
 
     logger.info("+++ {}".format(game))
 
-    engine_cfg = config["engine"]
-    polyglot_cfg = engine_cfg.get("polyglot", {})
-    book_cfg = polyglot_cfg.get("book", {})
-
     deferredFirstMove = False
 
     # firt move as white

@@ -71,9 +71,12 @@ class Player:
     
     def findBestMove(self, board):
         self.next_move = chess.Move.null()
-        validMoves = list(board.legal_moves)
-        random.shuffle(validMoves)
-        self.findMoveNegaMaxAlphaBeta(board, validMoves, self.depth, -CHECKMATE, CHECKMATE, 1 if board.turn == chess.WHITE else -1) 
+        try:
+            self.next_move = chess.polyglot.MemoryMappedReader("./book/bookfish.bin").weighted_choice(board).move
+        except:            
+            validMoves = list(board.legal_moves)
+            random.shuffle(validMoves)
+            self.findMoveNegaMaxAlphaBeta(board, validMoves, self.depth, -CHECKMATE, CHECKMATE, 1 if board.turn == chess.WHITE else -1) 
         return self.next_move
     
     
