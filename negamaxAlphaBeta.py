@@ -1,3 +1,11 @@
+import random 
+import chess 
+import chess.pgn
+import datetime
+
+CHECKMATE = 99999
+SLATEMATE = 0
+
 pawntable = [
  0,  0,  0,  0,  0,  0,  0,  0,
  5, 10, 10,-20,-20, 10, 10,  5,
@@ -61,13 +69,20 @@ kingstable = [
 
 
 class Player:
-    def __init__(self, name, depth, book_path = "./book/bookfish.bin"):
+    def __init__(self, name, depth, method = "NegamaxAlphaBeta", book_path = "./book/bookfish.bin"):
         self.name = name
         self.next_move = None
         self.depth = depth
         self.piece_square_tables = [pawntable, knightstable, bishopstable, rookstable, queenstable, kingstable]
-        self.pieces_values = [100,320,330,500,900]
+        self.pieces_values = { chess.PAWN : 100,
+                                  chess.KNIGHT : 320, 
+                                  chess.BISHOP : 330,
+                                  chess.ROOK : 500,
+                                  chess.QUEEN : 900,
+                                  chess.KING : CHECKMATE}
         self.book_path = book_path
+        self.count = 0
+        self.method = method
         
     
     def findBestMove(self, board):
@@ -77,14 +92,19 @@ class Player:
         except:            
             validMoves = list(board.legal_moves)
             random.shuffle(validMoves)
-            self.findMoveNegaMaxAlphaBeta(board, validMoves, self.depth, -CHECKMATE, CHECKMATE, 1 if board.turn == chess.WHITE else -1) 
+            if self.method == "NegamaxAlphaBeta":
+                self.findMoveNegaMaxAlphaBeta(board, validMoves, self.depth, -CHECKMATE, CHECKMATE, 1 if board.turn == chess.WHITE else -1) 
+            else:
+                self.findMoveNegaMax(board, validMoves, self.depth, 1 if board.turn == chess.WHITE else -1)
         return self.next_move
     
     
     def findMoveNegaMax(self, board, validMoves, depth, turnMultiplier):
+        self.count+=1
         if depth==0:
             return turnMultiplier * self.scoreBoard(board)
         
+        validMoves = self.orderMoves(board, validMoves)
         maxScore = -CHECKMATE
         for move in validMoves:
             board.push(move)
@@ -100,10 +120,14 @@ class Player:
     
     
     def findMoveNegaMaxAlphaBeta(self, board, validMoves, depth, alpha, beta, turnMultiplier):
+        self.count+=1
         if depth==0:
             return turnMultiplier * self.scoreBoard(board)
         
-        # move_ordering - to implement later (check better moves first ! )
+        # move_ordering 
+        # https://www.youtube.com/watch?v=U4ogK0MIzqk
+        validMoves = self.orderMoves(board, validMoves)
+        
         maxScore = -CHECKMATE
         for move in validMoves:
             board.push(move)
@@ -121,10 +145,39 @@ class Player:
         return maxScore
     
     
+    
+    def orderMoves(self, board, moves):
+        
+        scored_moves = []
+        for move in moves:
+            moveScoreguess = 0
+            
+            # A capture move
+            if board.is_capture(move):
+                if board.piece_at(move.from_square)!= None and board.piece_at(move.to_square)!= None:
+                    move_piece_type = self.pieces_values[board.piece_at(move.from_square).piece_type]
+                    captured_piece_type = self.pieces_values[board.piece_at(move.to_square).piece_type]
+                    moveScoreguess = 10*captured_piece_type  - move_piece_type 
+            
+            # Pawn promotion 
+            if move.promotion != None:
+                moveScoreguess += self.pieces_values[move.promotion]
+             
+            # so la case TO est controlé par un pion
+            #if ???:
+            #    moveScoreguess -= self.pieces_values[board.piece_at(move.from_square)]
+                
+            scored_moves.append((moveScoreguess, move))
+        
+        sorted(scored_moves, key =lambda scored_moves:scored_moves[0])
+        
+        ordered_moves = [move[1] for move in scored_moves]
+        return ordered_moves
+                
+  
     '''
     Positive score is good for white, negative is good for black
     '''
-    
     def scoreBoard(self, board):
         
         if board.is_checkmate():
@@ -148,11 +201,11 @@ class Player:
         wq = len(board.pieces(chess.QUEEN, chess.WHITE))
         bq = len(board.pieces(chess.QUEEN, chess.BLACK))
         
-        material = (self.pieces_values[0]*(wp-bp)
-                   + self.pieces_values[1]*(wn-bn)
-                   + self.pieces_values[2]*(wb-bb)
-                   + self.pieces_values[3]*(wr-br)
-                   + self.pieces_values[4]*(wq-bq))
+        material = (self.pieces_values[chess.PAWN]*(wp-bp)
+                   + self.pieces_values[chess.KNIGHT]*(wn-bn)
+                   + self.pieces_values[chess.BISHOP]*(wb-bb)
+                   + self.pieces_values[chess.ROOK]*(wr-br)
+                   + self.pieces_values[chess.QUEEN]*(wq-bq))
         
         pst = self.piece_square_tables
         pawnsq = sum([pst[0][i] for i in board.pieces(chess.PAWN, chess.WHITE)])
@@ -178,24 +231,11 @@ class Player:
         
         return score
             
-
-
-
-import random 
-
-import chess 
-import chess.pgn
-import datetime
-
-
-
-CHECKMATE = 99999
-SLATEMATE = 0
-
+    
 if __name__ == "__main__":
     
     player1 = Player("NumeroUno", 3)
-    player2 = Player("Toto", 1)
+    player2 = Player("Toto", 3, "Negamax")
     
     game = chess.pgn.Game()
     game.headers["Event"] = "Example"
@@ -206,10 +246,7 @@ if __name__ == "__main__":
     game.headers["Black"] = player2.name
     board = chess.Board()
     
-    #boardvalue = 0
-    
-    coup = 1
-    
+   
     while not board.is_game_over():
         if board.turn:
             move = player1.findBestMove(board)
@@ -218,7 +255,7 @@ if __name__ == "__main__":
             else:
                 print("GameOver")
                 break
-            print("{}. {}".format(coup,move))
+            #print("{}. {}".format(board.fullmove_number,move))
             
         else:
             move = player2.findBestMove(board)
@@ -227,9 +264,11 @@ if __name__ == "__main__":
             else:
                 print("GameOver")
                 break
-            print("{}... {}".format(coup,move))
-            coup+=1
+            #print("{}... {}".format(board.fullmove_number,move))
             
     game.headers["Result"] = str(board.result(claim_draw=True))
-    print(game)
+    #print(game)
     
+    print(player1.count / board.fullmove_number)
+    print(player2.count / board.fullmove_number)
+    print(player2.count / player1.count)

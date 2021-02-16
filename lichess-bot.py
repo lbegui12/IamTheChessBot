@@ -60,6 +60,7 @@ def watch_control_stream(control_queue, li):
             for line in lines:
                 if line:
                     event = json.loads(line.decode('utf-8'))
+                    logger.debug(event)
                     control_queue.put_nowait(event)
                 else:
                     control_queue.put_nowait({"type": "ping"})
@@ -293,7 +294,7 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--logfile', help="Log file to append logs to.", default=None)
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.DEBUG if args.v else logging.DEBUG, filename="logfile.txt",
+    logging.basicConfig(level=logging.DEBUG if args.v else logging.DEBUG, filename=args.logfile,
                         format="%(asctime)-15s: %(message)s")
     enable_color_logging(debug_lvl=logging.DEBUG if args.v else logging.DEBUG)
     logger.info(intro())
